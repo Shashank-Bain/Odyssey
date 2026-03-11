@@ -6,3 +6,5 @@ Flask-Login==0.6.3
 python-dotenv==1.0.1
 WTForms==3.2.1
 psycopg2-binary==2.9.10
+gunicorn==23.0.0
+azure-storage-blob==12.25.1

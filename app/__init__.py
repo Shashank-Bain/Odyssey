@@ -6,6 +6,7 @@ from flask import Flask
 from sqlalchemy.exc import SQLAlchemyError
 from werkzeug.security import generate_password_hash
 
+from .blob_sqlite import BlobSqliteSync, build_blob_sqlite_sync
 from .extensions import csrf, db, login_manager, migrate
 from .models import (
     LEVEL_CHOICES,
@@ -24,18 +25,23 @@ from .models import (
 )
 
 
-def _resolve_database_uri() -> str:
+def _resolve_database_uri(app: Flask) -> tuple[str, BlobSqliteSync | None]:
     database_url = os.getenv("DATABASE_URL", "").strip()
     if database_url:
         # Some providers expose the legacy postgres:// scheme.
         if database_url.startswith("postgres://"):
-            return database_url.replace("postgres://", "postgresql://", 1)
-        return database_url
+            return database_url.replace("postgres://", "postgresql://", 1), None
+        return database_url, None
+
+    blob_sqlite_sync = build_blob_sqlite_sync(app)
+    if blob_sqlite_sync:
+        blob_sqlite_sync.ensure_local_from_blob()
+        return blob_sqlite_sync.database_uri, blob_sqlite_sync
 
     # Vercel serverless filesystem is read-only except /tmp.
     if os.getenv("VERCEL"):
-        return "sqlite:////tmp/odyssey.db"
-    return "sqlite:///odyssey.db"
+        return "sqlite:////tmp/odyssey.db", None
+    return "sqlite:///odyssey.db", None
 
 
 RESET_MANAGER_PEOPLE = [
@@ -105,8 +111,12 @@ def create_app() -> Flask:
     app = Flask(__name__)
 
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
-    app.config["SQLALCHEMY_DATABASE_URI"] = _resolve_database_uri()
+    database_uri, blob_sqlite_sync = _resolve_database_uri(app)
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_uri
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+    if blob_sqlite_sync:
+        app.extensions["blob_sqlite_sync"] = blob_sqlite_sync
 
     db.init_app(app)
     migrate.init_app(app, db)
@@ -139,8 +149,18 @@ def create_app() -> Flask:
 
     register_cli(app)
 
+    @app.after_request
+    def _sync_blob_sqlite_after_request(response):
+        syncer = app.extensions.get("blob_sqlite_sync")
+        if syncer:
+            syncer.upload_if_changed()
+        return response
+
     with app.app_context():
         db.create_all()
+        syncer = app.extensions.get("blob_sqlite_sync")
+        if syncer:
+            syncer.upload_if_changed(force=True)
 
     @app.template_filter("currency")
     def currency_filter(value: float) -> str:
@@ -150,6 +170,12 @@ def create_app() -> Flask:
 
 
 def register_cli(app: Flask) -> None:
+    def _sync_blob_sqlite(force: bool = True) -> bool:
+        syncer = app.extensions.get("blob_sqlite_sync")
+        if not syncer:
+            return False
+        return bool(syncer.upload_if_changed(force=force))
+
     def _build_email(full_name: str) -> str:
         parts = [part.strip().lower() for part in full_name.split() if part.strip()]
         if len(parts) < 2:
@@ -377,6 +403,8 @@ def register_cli(app: Flask) -> None:
         click.echo(f"Reset complete ({reset_scope}). Created manager users:")
         for user in created_users:
             click.echo(f"- {user.full_name}: {user.email}")
+        if _sync_blob_sqlite(force=True):
+            click.echo("Uploaded SQLite DB to Azure Blob.")
 
     @app.cli.command("seed")
     def seed_data() -> None:
@@ -482,3 +510,12 @@ def register_cli(app: Flask) -> None:
         db.session.commit()
 
         click.echo("Seed complete: manager user plus teams, memberships, projects, and economics master data added.")
+        if _sync_blob_sqlite(force=True):
+            click.echo("Uploaded SQLite DB to Azure Blob.")
+
+    @app.cli.command("sync-db-blob")
+    def sync_db_blob() -> None:
+        if _sync_blob_sqlite(force=True):
+            click.echo("Uploaded SQLite DB to Azure Blob.")
+        else:
+            click.echo("Blob SQLite sync is not configured. Set ODYSSEY_BLOB_CONNECTION_STRING and ODYSSEY_BLOB_CONTAINER.")
