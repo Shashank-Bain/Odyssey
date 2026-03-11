@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% block title %}Teams | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Teams</h1>
+    <p class="page-subtitle">Manage teams and ownership.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('teams.create_team') }}">Add Team</a>
+</div>
+
+<div class="card card-premium mb-4">
+  <div class="card-body">
+    <form class="row g-3" method="get">
+      <div class="col-md-4">
+        <label class="form-label">Status</label>
+        <select class="form-select" name="status">
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-grid align-items-end">
+        <button class="btn btn-outline-dark">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card card-premium">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Owner</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for team in teams %}
+        <tr>
+          <td><a href="{{ url_for('teams.team_detail', team_id=team.id) }}">{{ team.name }}</a></td>
+          <td>{{ team.owner_user.full_name if team.owner_user else '-' }}</td>
+          <td><span class="badge {{ 'text-bg-success' if team.is_active else 'text-bg-secondary' }}">{{ 'Active' if team.is_active else 'Inactive' }}</span></td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('teams.team_detail', team_id=team.id) }}">Memberships</a>
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('teams.edit_team', team_id=team.id) }}">Edit</a>
+            <form class="d-inline js-confirm-delete" method="post" action="{{ url_for('teams.delete_team', team_id=team.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center py-4 text-muted">No teams found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

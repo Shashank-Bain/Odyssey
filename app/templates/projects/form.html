@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ title }}</h1>
+    <p class="page-subtitle">Define project metadata used in staffing and billing calculations.</p>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-10">
+    <div class="card card-premium">
+      <div class="card-body p-4 p-lg-5">
+        <h2 class="h5 mb-4">Project Details</h2>
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="row g-3">
+            <div class="col-md-4">
+              <label class="form-label">{{ form.case_code.label.text }}</label>
+              {{ form.case_code(class='form-control') }}
+              {% for error in form.case_code.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-8">
+              <label class="form-label">{{ form.description.label.text }}</label>
+              {{ form.description(class='form-control') }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.case_type.label.text }}</label>
+              {{ form.case_type(class='form-select') }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.region.label.text }}</label>
+              {{ form.region(class='form-control') }}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.team_id.label.text }}</label>
+              {{ form.team_id(class='form-select') }}
+              {% for error in form.team_id.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-md-4">
+              <label class="form-label">{{ form.sku.label.text }}</label>
+              {{ form.sku(class='form-control') }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.stakeholder.label.text }}</label>
+              {{ form.stakeholder(class='form-control') }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.nps_contact.label.text }}</label>
+              {{ form.nps_contact(class='form-control') }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.start_date.label.text }}</label>
+              {{ form.start_date(class='form-control') }}
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">{{ form.end_date.label.text }}</label>
+              {{ form.end_date(class='form-control') }}
+            </div>
+            <div class="col-md-6 d-flex align-items-center pt-4">
+              <div class="form-check">
+                {{ form.is_active(class='form-check-input') }}
+                <label class="form-check-label">{{ form.is_active.label.text }}</label>
+              </div>
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.notes.label.text }}</label>
+              {{ form.notes(class='form-control', rows='4') }}
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            {{ form.submit(class='btn btn-primary') }}
+            <a class="btn btn-outline-secondary" href="{{ url_for('projects.list_projects') }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

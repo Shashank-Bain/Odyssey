@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Rates | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Legacy Billing Rates</h1>
+    <p class="page-subtitle">Deprecated table retained for backward compatibility.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('rates.create_rate') }}">Add Rate</a>
+</div>
+
+<div class="alert alert-info">
+  Manage current economics in Master Data: <a href="{{ url_for('admin.list_client_billing_rates') }}">Client Billing Rates</a>,
+  <a href="{{ url_for('admin.list_cost_rates') }}">Cost Rates</a>, and
+  <a href="{{ url_for('admin.nonclient_config') }}">Non-Client Config</a>.
+</div>
+
+{% if missing_rate_rows %}
+<div class="alert alert-warning">
+  <div class="fw-semibold mb-2">Missing Rate Combinations Found</div>
+  <ul class="mb-0">
+    {% for case_type, region, logs_count in missing_rate_rows %}
+      <li>{{ case_type }} / {{ region }} referenced in {{ logs_count }} worklog(s).</li>
+    {% endfor %}
+  </ul>
+</div>
+{% endif %}
+
+<div class="card card-premium">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Case Type</th>
+          <th>Region</th>
+          <th>Hourly Rate</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rate in rates %}
+        <tr>
+          <td>{{ rate.case_type }}</td>
+          <td>{{ rate.region }}</td>
+          <td>{{ rate.hourly_rate|currency }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('rates.edit_rate', rate_id=rate.id) }}">Edit</a>
+            <form class="d-inline js-confirm-delete" method="post" action="{{ url_for('rates.delete_rate', rate_id=rate.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="4" class="text-center py-4 text-muted">No rates available.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

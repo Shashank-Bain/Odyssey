@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block title %}{{ title }} | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ title }}</h1>
+    <p class="page-subtitle">Set the hourly rate matrix that powers derived billing totals.</p>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card card-premium">
+      <div class="card-body p-4 p-lg-5">
+        <h2 class="h5 mb-4">Rate Card Details</h2>
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">{{ form.case_type.label.text }}</label>
+              {{ form.case_type(class='form-select') }}
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">{{ form.region.label.text }}</label>
+              {{ form.region(class='form-control') }}
+              {% for error in form.region.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+            <div class="col-12">
+              <label class="form-label">{{ form.hourly_rate.label.text }}</label>
+              {{ form.hourly_rate(class='form-control', step='0.01') }}
+              {% for error in form.hourly_rate.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+            </div>
+          </div>
+          <div class="d-flex gap-2 mt-4">
+            {{ form.submit(class='btn btn-primary') }}
+            <a class="btn btn-outline-secondary" href="{{ url_for('rates.list_rates') }}">Cancel</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends 'base.html' %}
+{% block title %}Non-Client Billing Config | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Non-Client Billing Config</h1>
+    <p class="page-subtitle">Base rate used for non-client project-day proration.</p>
+  </div>
+</div>
+
+<div class="row justify-content-center">
+  <div class="col-lg-7">
+    <div class="card card-premium">
+      <div class="card-body p-4">
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            <label class="form-label">{{ form.base_daily_rate_for_4_5.label.text }}</label>
+            {{ form.base_daily_rate_for_4_5(class='form-control', step='0.01') }}
+            <div class="small text-muted mt-1">Revenue formula: base_daily_rate_for_4_5 * (billable_fte / 4.5)</div>
+          </div>
+          {{ form.submit(class='btn btn-primary') }}
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,328 @@
+{% extends 'base.html' %}
+{% block title %}Daily Staffing | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head mb-3">
+  <div>
+    <h1 class="page-title">Daily Staffing</h1>
+    <p class="page-subtitle small mb-0">Manager: {{ current_user.full_name }}</p>
+  </div>
+</div>
+
+<div class="card card-premium mb-3">
+  <div class="card-body py-3">
+    <div class="row g-2 align-items-end">
+      <div class="col-md-2">
+        <label class="form-label small">Date</label>
+        <input id="workDate" class="form-control form-control-sm" type="date" value="{{ selected_date.isoformat() }}">
+      </div>
+      <div class="col-md-10 d-flex flex-wrap gap-2">
+        <button id="loadBtn" class="btn btn-sm btn-outline-dark" type="button">Load</button>
+        <button id="prefillBtn" class="btn btn-sm btn-outline-secondary" type="button">Prefill from previous day</button>
+        <button id="saveBtn" class="btn btn-sm btn-primary" type="button">Save</button>
+        <button id="addRowBtn" class="btn btn-sm btn-outline-success" type="button">Add Row</button>
+      </div>
+    </div>
+    <div id="gridHint" class="small text-muted mt-2"></div>
+  </div>
+</div>
+
+<div class="card card-premium mb-3">
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" id="timesheetTable">
+      <thead>
+        <tr>
+          <th>Team Member</th>
+          <th>Work Type</th>
+          <th>Project</th>
+          <th>Hours</th>
+          <th>Derived Team</th>
+          <th>Billing Manager</th>
+          <th>Revenue Share</th>
+          <th>Row Cost</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody id="timesheetBody"></tbody>
+      <tfoot>
+        <tr class="table-light fw-semibold">
+          <td colspan="3">Totals</td>
+          <td id="totalHours">0.00</td>
+          <td colspan="2"></td>
+          <td id="totalRevenue">$0.00</td>
+          <td id="totalCost">$0.00</td>
+          <td></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<div class="card card-premium">
+  <div class="card-body">
+    <h2 class="h5 mb-3">Billing for Selected Date</h2>
+    <div id="billingEmpty" class="text-muted small">No project rows selected for this date.</div>
+    <div class="table-responsive">
+      <table class="table table-sm align-middle mb-0" id="billingTable">
+        <thead>
+          <tr>
+            <th>Project</th>
+            <th>Case Type</th>
+            <th>Region</th>
+            <th>Project Hours</th>
+            <th>Billable FTE</th>
+            <th>Billing Manager</th>
+            <th>Override Revenue</th>
+            <th>Computed Revenue</th>
+            <th>Warnings</th>
+          </tr>
+        </thead>
+        <tbody id="billingBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  const members = {{ member_options|tojson }};
+  const projects = {{ project_options|tojson }};
+  const workCategories = {{ work_categories|tojson }};
+  const csrfToken = "{{ csrf_token() }}";
+
+  const projectMap = Object.fromEntries(projects.map(p => [p.id, p]));
+  const tableBody = document.getElementById("timesheetBody");
+  const billingBody = document.getElementById("billingBody");
+  const billingEmpty = document.getElementById("billingEmpty");
+  const hint = document.getElementById("gridHint");
+  const dateInput = document.getElementById("workDate");
+
+  let rows = [];
+  let billingRows = [];
+
+  function currency(v) {
+    return new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(v || 0);
+  }
+
+  function defaultRow() {
+    return {
+      id: null,
+      team_member_id: members.length ? members[0].id : null,
+      work_category: "Project",
+      project_id: projects.length ? projects[0].id : null,
+      hours: "",
+      derived_team_name: "Unassigned",
+      team_warning: true,
+      billing_manager_name: "{{ current_user.full_name }}",
+      revenue_share: 0,
+      row_cost: 0
+    };
+  }
+
+  function selectOptions(items, selected, labelKey = "label") {
+    return items.map(item => {
+      const value = item.id ?? item;
+      const label = item[labelKey] ?? item;
+      return `<option value="${value}" ${String(value) === String(selected) ? "selected" : ""}>${label}</option>`;
+    }).join("");
+  }
+
+  function rowProjectIds() {
+    return [...new Set(rows
+      .filter(r => r.work_category === "Project" && r.project_id)
+      .map(r => Number(r.project_id)))
+    ];
+  }
+
+  function syncBillingRows() {
+    const usedIds = rowProjectIds();
+    const existing = Object.fromEntries(billingRows.map(b => [Number(b.project_id), b]));
+    billingRows = usedIds.map(projectId => {
+      const fromServer = existing[projectId];
+      const project = projectMap[projectId] || {};
+      return fromServer || {
+        project_id: projectId,
+        case_code: project.case_code || "",
+        description: project.description || "",
+        case_type: project.case_type || "",
+        region: project.region || "",
+        total_project_hours: 0,
+        billable_fte: "",
+        billing_manager_name: "{{ current_user.full_name }}",
+        override_daily_revenue: "",
+        notes: "",
+        computed_daily_revenue: 0,
+        warning: "Billable FTE not set for this project-day."
+      };
+    });
+
+    usedIds.forEach(projectId => {
+      const projectHours = rows
+        .filter(r => r.work_category === "Project" && Number(r.project_id) === projectId)
+        .reduce((sum, r) => sum + Number(r.hours || 0), 0);
+      const found = billingRows.find(r => Number(r.project_id) === projectId);
+      if (found) found.total_project_hours = projectHours;
+    });
+  }
+
+  function renderBilling() {
+    syncBillingRows();
+    billingBody.innerHTML = "";
+    billingEmpty.style.display = billingRows.length ? "none" : "block";
+
+    billingRows.forEach((item, idx) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${item.case_code || ""} - ${item.description || ""}</td>
+        <td>${item.case_type || "-"}</td>
+        <td>${item.region || "-"}</td>
+        <td>${Number(item.total_project_hours || 0).toFixed(2)}</td>
+        <td><input class="form-control form-control-sm js-billable-fte" data-idx="${idx}" type="number" min="0.5" step="0.5" value="${item.billable_fte ?? ""}"></td>
+        <td><input class="form-control form-control-sm js-billing-manager-panel" data-idx="${idx}" value="${item.billing_manager_name || ""}"></td>
+        <td><input class="form-control form-control-sm js-override" data-idx="${idx}" type="number" min="0" step="0.01" value="${item.override_daily_revenue ?? ""}"></td>
+        <td class="fw-semibold">${currency(item.computed_daily_revenue || 0)}</td>
+        <td>${item.warning ? '<span class="badge text-bg-warning">' + item.warning + '</span>' : '-'}</td>
+      `;
+      billingBody.appendChild(tr);
+    });
+  }
+
+  function render() {
+    tableBody.innerHTML = "";
+    let totalHours = 0;
+    let totalRevenue = 0;
+    let totalCost = 0;
+
+    rows.forEach((row, idx) => {
+      const projectDisabled = row.work_category !== "Project";
+      const projectRows = projects.map(p => ({ id: p.id, label: `${p.case_code} - ${p.description}` }));
+
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td><select class="form-select form-select-sm js-team-member" data-idx="${idx}">${selectOptions(members, row.team_member_id)}</select></td>
+        <td><select class="form-select form-select-sm js-work-type" data-idx="${idx}">${selectOptions(workCategories, row.work_category)}</select></td>
+        <td><select class="form-select form-select-sm js-project" data-idx="${idx}" ${projectDisabled ? "disabled" : ""}>${selectOptions(projectRows, row.project_id)}</select></td>
+        <td><input class="form-control form-control-sm js-hours" data-idx="${idx}" type="number" min="0.25" max="24" step="0.25" value="${row.hours ?? ""}"></td>
+        <td>${row.team_warning ? '<span class="badge text-bg-warning">Unassigned</span>' : '<span class="badge text-bg-light">' + (row.derived_team_name || '-') + '</span>'}</td>
+        <td><input class="form-control form-control-sm js-billing-manager" data-idx="${idx}" value="${row.billing_manager_name || ""}"></td>
+        <td class="small fw-semibold">${currency(row.revenue_share || 0)}</td>
+        <td class="small fw-semibold">${currency(row.row_cost || 0)}</td>
+        <td><button class="btn btn-sm btn-outline-danger js-del" data-idx="${idx}" type="button">Delete</button></td>
+      `;
+
+      tableBody.appendChild(tr);
+      totalHours += Number(row.hours || 0);
+      totalRevenue += Number(row.revenue_share || 0);
+      totalCost += Number(row.row_cost || 0);
+    });
+
+    document.getElementById("totalHours").textContent = totalHours.toFixed(2);
+    document.getElementById("totalRevenue").textContent = currency(totalRevenue);
+    document.getElementById("totalCost").textContent = currency(totalCost);
+    renderBilling();
+  }
+
+  async function loadRows(forcePrefill) {
+    const res = await fetch(`/worklogs/data?date=${dateInput.value}${forcePrefill ? "&force_prefill=1" : ""}`);
+    const data = await res.json();
+    rows = data.worklogs || [];
+    billingRows = data.project_day_billing || [];
+    if (!rows.length) rows = [defaultRow()];
+    hint.textContent = data.prefilled_from ? `Prefilled from ${data.prefilled_from}` : "";
+    render();
+  }
+
+  async function saveRows() {
+    const filteredRows = rows.filter(r => r.team_member_id && Number(r.hours || 0) > 0);
+    const payloadBilling = billingRows.map(item => ({
+      project_id: item.project_id,
+      billable_fte: item.billable_fte,
+      billing_manager_name: item.billing_manager_name,
+      override_daily_revenue: item.override_daily_revenue,
+      notes: item.notes
+    }));
+
+    const res = await fetch("/worklogs/bulk_save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRFToken": csrfToken
+      },
+      body: JSON.stringify({
+        work_date: dateInput.value,
+        worklogs: filteredRows,
+        project_day_billing: payloadBilling
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      alert(data.message || "Save failed.");
+      return;
+    }
+
+    hint.textContent = "Saved.";
+    await loadRows(false);
+  }
+
+  tableBody.addEventListener("click", (event) => {
+    const idx = Number(event.target.dataset.idx);
+    if (event.target.classList.contains("js-del")) {
+      rows.splice(idx, 1);
+      if (!rows.length) rows.push(defaultRow());
+      render();
+    }
+  });
+
+  tableBody.addEventListener("change", (event) => {
+    const idx = Number(event.target.dataset.idx);
+    if (Number.isNaN(idx)) return;
+    const row = rows[idx];
+
+    if (event.target.classList.contains("js-team-member")) row.team_member_id = Number(event.target.value);
+    if (event.target.classList.contains("js-work-type")) {
+      row.work_category = event.target.value;
+      if (row.work_category !== "Project") row.project_id = null;
+    }
+    if (event.target.classList.contains("js-project")) row.project_id = Number(event.target.value);
+    if (event.target.classList.contains("js-hours")) row.hours = event.target.value;
+    if (event.target.classList.contains("js-billing-manager")) row.billing_manager_name = event.target.value;
+
+    render();
+  });
+
+  billingBody.addEventListener("change", (event) => {
+    const idx = Number(event.target.dataset.idx);
+    if (Number.isNaN(idx)) return;
+    const row = billingRows[idx];
+
+    if (event.target.classList.contains("js-billable-fte")) row.billable_fte = event.target.value;
+    if (event.target.classList.contains("js-billing-manager-panel")) row.billing_manager_name = event.target.value;
+    if (event.target.classList.contains("js-override")) row.override_daily_revenue = event.target.value;
+  });
+
+  tableBody.addEventListener("keydown", (event) => {
+    if (!event.target.classList.contains("js-hours") || event.key !== "Enter") return;
+    event.preventDefault();
+    const idx = Number(event.target.dataset.idx);
+    const next = tableBody.querySelector(`.js-hours[data-idx="${idx + 1}"]`);
+    if (next) next.focus();
+  });
+
+  document.getElementById("loadBtn").addEventListener("click", () => loadRows(false));
+  document.getElementById("prefillBtn").addEventListener("click", async () => {
+    if (window.confirm("Replace current grid with previous day values?")) {
+      await loadRows(true);
+    }
+  });
+  document.getElementById("saveBtn").addEventListener("click", saveRows);
+  document.getElementById("addRowBtn").addEventListener("click", () => {
+    rows.push(defaultRow());
+    render();
+  });
+
+  loadRows(false);
+})();
+</script>
+{% endblock %}

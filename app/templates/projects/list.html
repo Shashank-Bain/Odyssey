@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Projects | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Projects</h1>
+    <p class="page-subtitle">Track active and historical case portfolio.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('projects.create_project') }}">Add Project</a>
+</div>
+
+<div class="card card-premium mb-4">
+  <div class="card-body">
+    <form class="row g-3" method="get">
+      <div class="col-md-4">
+        <label class="form-label">Status</label>
+        <select class="form-select" name="status">
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Region</label>
+        <select class="form-select" name="region">
+          <option value="">All</option>
+          {% for item in regions %}
+          <option value="{{ item }}" {% if region == item %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Case Type</label>
+        <select class="form-select" name="case_type">
+          <option value="">All</option>
+          {% for item in case_types %}
+          <option value="{{ item }}" {% if case_type == item %}selected{% endif %}>{{ item }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2 d-grid align-items-end">
+        <button class="btn btn-outline-dark">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card card-premium">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Case Code</th>
+          <th>Description</th>
+          <th>Case Type</th>
+          <th>Region</th>
+          <th>Team</th>
+          <th>Stakeholder</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for project in projects %}
+        <tr>
+          <td>{{ project.case_code }}</td>
+          <td>{{ project.description }}</td>
+          <td>{{ project.case_type }}</td>
+          <td>{{ project.region }}</td>
+          <td>{{ project.team.name if project.team else '-' }}</td>
+          <td>{{ project.stakeholder }}</td>
+          <td><span class="badge {{ 'text-bg-success' if project.is_active else 'text-bg-secondary' }}">{{ 'Active' if project.is_active else 'Inactive' }}</span></td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('projects.edit_project', project_id=project.id) }}">Edit</a>
+            <form class="d-inline js-confirm-delete" method="post" action="{{ url_for('projects.delete_project', project_id=project.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="8" class="text-center py-4 text-muted">No projects found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

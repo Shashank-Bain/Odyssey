@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+{% block title %}Dashboards | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Dashboards</h1>
+    <p class="page-subtitle">Monthly billing cuts and utilization snapshot.</p>
+  </div>
+  <form method="get" class="d-flex gap-2 align-items-center">
+    <label class="small text-muted">Month</label>
+    <input class="form-control" type="month" name="month" value="{{ month_key }}">
+    <button class="btn btn-primary">Apply</button>
+  </form>
+</div>
+
+<div class="row g-4 mb-4">
+  <div class="col-lg-6">
+    <div class="card card-premium h-100">
+      <div class="card-body">
+        <h2 class="h6 text-muted mb-3">Monthly Billing by Billing Manager</h2>
+        <div class="chart-wrap">
+          <canvas id="managerChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card card-premium h-100">
+      <div class="card-body">
+        <h2 class="h6 text-muted mb-3">Monthly Billing by Team Member</h2>
+        <div class="chart-wrap">
+          <canvas id="memberChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12">
+    <div class="card card-premium">
+      <div class="card-header bg-transparent border-0 pt-4 px-4"><h2 class="h5 mb-0">Billing by Entry Manager</h2></div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Manager</th><th class="text-end">Billing</th></tr></thead>
+          <tbody>
+            {% for name, total in by_entry_manager %}
+            <tr><td>{{ name or 'Unassigned' }}</td><td class="text-end">{{ (total or 0)|currency }}</td></tr>
+            {% else %}
+            <tr><td colspan="2" class="text-center py-4 text-muted">No billing data for this month.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card card-premium">
+      <div class="card-header bg-transparent border-0 pt-4 px-4"><h2 class="h5 mb-0">Billing by Project</h2></div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Project</th><th class="text-end">Billing</th></tr></thead>
+          <tbody>
+            {% for name, total in by_project %}
+            <tr><td>{{ name }}</td><td class="text-end">{{ (total or 0)|currency }}</td></tr>
+            {% else %}
+            <tr><td colspan="2" class="text-center py-4 text-muted">No billing data for this month.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card card-premium">
+      <div class="card-header bg-transparent border-0 pt-4 px-4"><h2 class="h5 mb-0">Billing by Region / Case Type</h2></div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Region</th><th>Case Type</th><th class="text-end">Billing</th></tr></thead>
+          <tbody>
+            {% for region, case_type, total in by_region_case %}
+            <tr><td>{{ region }}</td><td>{{ case_type }}</td><td class="text-end">{{ (total or 0)|currency }}</td></tr>
+            {% else %}
+            <tr><td colspan="3" class="text-center py-4 text-muted">No billing data for this month.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12">
+    <div class="card card-premium">
+      <div class="card-header bg-transparent border-0 pt-4 px-4"><h2 class="h5 mb-0">Utilization by Team Member</h2></div>
+      <div class="table-responsive">
+        <table class="table mb-0">
+          <thead><tr><th>Team Member</th><th class="text-end">Logged Hours</th><th class="text-end">Capacity Hours</th><th class="text-end">Utilization</th></tr></thead>
+          <tbody>
+            {% for row in utilization_rows %}
+            <tr>
+              <td>{{ row.member.name }}</td>
+              <td class="text-end">{{ '%.2f'|format(row.hours) }}</td>
+              <td class="text-end">{{ '%.2f'|format(row.capacity) }}</td>
+              <td class="text-end">
+                <span class="badge {{ 'text-bg-success' if row.utilization >= 85 else 'text-bg-warning' if row.utilization >= 60 else 'text-bg-secondary' }}">
+                  {{ '%.1f'|format(row.utilization) }}%
+                </span>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center py-4 text-muted">No active members available.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  window.managerChartInstance = window.managerChartInstance || null;
+  window.memberChartInstance = window.memberChartInstance || null;
+
+  const managerCtx = document.getElementById('managerChart');
+  if (managerCtx) {
+    if (window.managerChartInstance) {
+      window.managerChartInstance.destroy();
+    }
+    window.managerChartInstance = new Chart(managerCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ chart_manager_labels|tojson }},
+        datasets: [{
+          label: 'Billing',
+          data: {{ chart_manager_data|tojson }},
+          backgroundColor: '#ee6f3f',
+          borderRadius: 8
+        }]
+      },
+      options: { plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false }
+    });
+  }
+
+  const memberCtx = document.getElementById('memberChart');
+  if (memberCtx) {
+    if (window.memberChartInstance) {
+      window.memberChartInstance.destroy();
+    }
+    window.memberChartInstance = new Chart(memberCtx, {
+      type: 'bar',
+      data: {
+        labels: {{ chart_member_labels|tojson }},
+        datasets: [{
+          label: 'Billing',
+          data: {{ chart_member_data|tojson }},
+          backgroundColor: '#1ba784',
+          borderRadius: 8
+        }]
+      },
+      options: { plugins: { legend: { display: false } }, responsive: true, maintainAspectRatio: false }
+    });
+  }
+</script>
+{% endblock %}

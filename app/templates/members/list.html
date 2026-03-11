@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+{% block title %}Team Members | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Team Members</h1>
+    <p class="page-subtitle">Manage staffing roster and default daily capacities.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('members.create_member') }}">Add Team Member</a>
+</div>
+
+<div class="card card-premium mb-4">
+  <div class="card-body">
+    <form class="row g-3" method="get">
+      <div class="col-md-6">
+        <label class="form-label">Search</label>
+        <input class="form-control" type="text" name="q" value="{{ q }}" placeholder="Name or employee ID">
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Status</label>
+        <select class="form-select" name="status">
+          <option value="all" {% if status == 'all' %}selected{% endif %}>All</option>
+          <option value="active" {% if status == 'active' %}selected{% endif %}>Active</option>
+          <option value="inactive" {% if status == 'inactive' %}selected{% endif %}>Inactive</option>
+        </select>
+      </div>
+      <div class="col-md-2 d-grid align-items-end">
+        <button class="btn btn-outline-dark">Filter</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card card-premium">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Employee ID</th>
+          <th>Name</th>
+          <th>Level</th>
+          <th>Gender</th>
+          <th>Capacity</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for member in members %}
+        <tr>
+          <td>{{ member.employee_id }}</td>
+          <td>{{ member.name }}</td>
+          <td>{{ member.level }}</td>
+          <td>{{ member.gender }}</td>
+          <td>{{ '%.2f'|format(member.default_daily_capacity_hours) }} hrs/day</td>
+          <td>
+            <span class="badge {{ 'text-bg-success' if member.is_active else 'text-bg-secondary' }}">{{ 'Active' if member.is_active else 'Inactive' }}</span>
+          </td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('members.edit_member', member_id=member.id) }}">Edit</a>
+            <form class="d-inline js-confirm-delete" method="post" action="{{ url_for('members.delete_member', member_id=member.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="7" class="text-center py-4 text-muted">No team members found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

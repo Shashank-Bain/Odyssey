@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Client Billing Rates | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Client Billing Rates</h1>
+    <p class="page-subtitle">Editable region x cadence x FTE-point revenue table.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('admin.create_client_billing_rate') }}">Add Billing Rate</a>
+</div>
+
+<div class="card card-premium">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Region</th>
+          <th>Cadence</th>
+          <th>FTE Point</th>
+          <th>Amount</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rate in rates %}
+        <tr>
+          <td>{{ rate.region }}</td>
+          <td>{{ rate.cadence }}</td>
+          <td>{{ rate.fte_point }}</td>
+          <td>{{ rate.amount|currency }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.edit_client_billing_rate', rate_id=rate.id) }}">Edit</a>
+            <form class="d-inline js-confirm-delete" method="post" action="{{ url_for('admin.delete_client_billing_rate', rate_id=rate.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center py-4 text-muted">No client billing rates found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

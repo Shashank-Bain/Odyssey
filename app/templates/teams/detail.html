@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}{{ team.name }} | Team Memberships{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">{{ team.name }}</h1>
+    <p class="page-subtitle">Effective-dated team memberships.</p>
+  </div>
+  <a class="btn btn-outline-secondary" href="{{ url_for('teams.list_teams') }}">Back to Teams</a>
+</div>
+
+<div class="row g-4">
+  <div class="col-lg-4">
+    <div class="card card-premium">
+      <div class="card-body">
+        <h2 class="h6 mb-3">Add Membership</h2>
+        <form method="post" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="mb-3">
+            <label class="form-label">{{ form.team_member_id.label.text }}</label>
+            {{ form.team_member_id(class='form-select') }}
+            {% for error in form.team_member_id.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">{{ form.start_date.label.text }}</label>
+            {{ form.start_date(class='form-control') }}
+            {% for error in form.start_date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          <div class="mb-3">
+            <label class="form-label">{{ form.end_date.label.text }}</label>
+            {{ form.end_date(class='form-control') }}
+            {% for error in form.end_date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+          {{ form.submit(class='btn btn-primary w-100') }}
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-8">
+    <div class="card card-premium">
+      <div class="table-responsive">
+        <table class="table table-hover align-middle mb-0">
+          <thead>
+            <tr>
+              <th>Member</th>
+              <th>Start</th>
+              <th>End</th>
+              <th class="text-end">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for membership in memberships %}
+            <tr>
+              <td>{{ membership.team_member.name }} ({{ membership.team_member.employee_id }})</td>
+              <td>
+                <form class="d-flex align-items-center gap-2" method="post" action="{{ url_for('teams.update_membership', membership_id=membership.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <input class="form-control form-control-sm" type="date" name="start_date" value="{{ membership.start_date.isoformat() }}">
+              </td>
+              <td>
+                  <input class="form-control form-control-sm" type="date" name="end_date" value="{{ membership.end_date.isoformat() if membership.end_date else '' }}">
+              </td>
+              <td class="text-end">
+                  <button class="btn btn-sm btn-outline-primary" type="submit">Update</button>
+                </form>
+                <form class="d-inline js-confirm-delete" method="post" action="{{ url_for('teams.delete_membership', membership_id=membership.id) }}">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+                </form>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="4" class="text-center py-4 text-muted">No memberships defined.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

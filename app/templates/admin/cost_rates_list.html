@@ -1,0 +1,46 @@
+{% extends 'base.html' %}
+{% block title %}Cost Rates | Odyssey{% endblock %}
+{% block content %}
+<div class="page-head">
+  <div>
+    <h1 class="page-title">Cost Rates</h1>
+    <p class="page-subtitle">Resource cost by normalized level key.</p>
+  </div>
+  <a class="btn btn-primary" href="{{ url_for('admin.create_cost_rate') }}">Add Cost Rate</a>
+</div>
+
+<div class="card card-premium">
+  <div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Level Key</th>
+          <th>Cost / Day</th>
+          <th>Effective Start</th>
+          <th>Effective End</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for rate in rates %}
+        <tr>
+          <td>{{ rate.level_key }}</td>
+          <td>{{ rate.cost_per_day|currency }}</td>
+          <td>{{ rate.effective_start_date.isoformat() if rate.effective_start_date else '-' }}</td>
+          <td>{{ rate.effective_end_date.isoformat() if rate.effective_end_date else '-' }}</td>
+          <td class="text-end">
+            <a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin.edit_cost_rate', rate_id=rate.id) }}">Edit</a>
+            <form class="d-inline js-confirm-delete" method="post" action="{{ url_for('admin.delete_cost_rate', rate_id=rate.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-outline-danger" type="submit">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr><td colspan="5" class="text-center py-4 text-muted">No cost rates found.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
