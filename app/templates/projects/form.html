@@ -4,7 +4,7 @@
 <div class="page-head">
   <div>
     <h1 class="page-title">{{ title }}</h1>
-    <p class="page-subtitle">Define project metadata used in staffing and billing calculations.</p>
+    <p class="page-subtitle">Capture project setup details used in staffing and billing calculations.</p>
   </div>
 </div>
 
@@ -24,14 +24,17 @@
             <div class="col-md-8">
               <label class="form-label">{{ form.description.label.text }}</label>
               {{ form.description(class='form-control') }}
+              {% for error in form.description.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-md-4">
               <label class="form-label">{{ form.case_type.label.text }}</label>
               {{ form.case_type(class='form-select') }}
+              {% for error in form.case_type.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-md-4">
               <label class="form-label">{{ form.region.label.text }}</label>
-              {{ form.region(class='form-control') }}
+              {{ form.region(class='form-select') }}
+              {% for error in form.region.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-md-4">
               <label class="form-label">{{ form.team_id.label.text }}</label>
@@ -40,23 +43,28 @@
             </div>
             <div class="col-md-4">
               <label class="form-label">{{ form.sku.label.text }}</label>
-              {{ form.sku(class='form-control') }}
+              {{ form.sku(class='form-select') }}
+              {% for error in form.sku.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-md-6">
               <label class="form-label">{{ form.stakeholder.label.text }}</label>
               {{ form.stakeholder(class='form-control') }}
+              {% for error in form.stakeholder.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-md-6">
               <label class="form-label">{{ form.nps_contact.label.text }}</label>
               {{ form.nps_contact(class='form-control') }}
+              {% for error in form.nps_contact.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-md-3">
               <label class="form-label">{{ form.start_date.label.text }}</label>
               {{ form.start_date(class='form-control') }}
+              {% for error in form.start_date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-md-3">
               <label class="form-label">{{ form.end_date.label.text }}</label>
               {{ form.end_date(class='form-control') }}
+              {% for error in form.end_date.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
             </div>
             <div class="col-md-6 d-flex align-items-center pt-4">
               <div class="form-check">
@@ -67,6 +75,7 @@
             <div class="col-12">
               <label class="form-label">{{ form.notes.label.text }}</label>
               {{ form.notes(class='form-control', rows='4') }}
+              {% for error in form.notes.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
             </div>
           </div>
           <div class="d-flex gap-2 mt-4">

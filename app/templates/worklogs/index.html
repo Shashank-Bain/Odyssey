@@ -16,10 +16,10 @@
         <input id="workDate" class="form-control form-control-sm" type="date" value="{{ selected_date.isoformat() }}">
       </div>
       <div class="col-md-10 d-flex flex-wrap gap-2">
-        <button id="loadBtn" class="btn btn-sm btn-outline-dark" type="button">Load</button>
-        <button id="prefillBtn" class="btn btn-sm btn-outline-secondary" type="button">Prefill from previous day</button>
-        <button id="saveBtn" class="btn btn-sm btn-primary" type="button">Save</button>
-        <button id="addRowBtn" class="btn btn-sm btn-outline-success" type="button">Add Row</button>
+        <button id="loadBtn" class="btn btn-sm btn-outline-secondary" type="button"><i class="bi bi-arrow-clockwise me-1"></i>Load</button>
+        <button id="prefillBtn" class="btn btn-sm btn-outline-secondary" type="button"><i class="bi bi-clipboard me-1"></i>Prefill</button>
+        <button id="saveBtn" class="btn btn-sm btn-primary" type="button"><i class="bi bi-check-lg me-1"></i>Save</button>
+        <button id="addRowBtn" class="btn btn-sm btn-outline-success" type="button"><i class="bi bi-plus-lg me-1"></i>Add Row</button>
       </div>
     </div>
     <div id="gridHint" class="small text-muted mt-2"></div>
@@ -124,7 +124,7 @@
     return items.map(item => {
       const value = item.id ?? item;
       const label = item[labelKey] ?? item;
-      return `<option value="${value}" ${String(value) === String(selected) ? "selected" : ""}>${label}</option>`;
+      return '<option value="' + value + '"' + (String(value) === String(selected) ? ' selected' : '') + '>' + label + '</option>';
     }).join("");
   }
 
@@ -173,17 +173,16 @@
 
     billingRows.forEach((item, idx) => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${item.case_code || ""} - ${item.description || ""}</td>
-        <td>${item.case_type || "-"}</td>
-        <td>${item.region || "-"}</td>
-        <td>${Number(item.total_project_hours || 0).toFixed(2)}</td>
-        <td><input class="form-control form-control-sm js-billable-fte" data-idx="${idx}" type="number" min="0.5" step="0.5" value="${item.billable_fte ?? ""}"></td>
-        <td><input class="form-control form-control-sm js-billing-manager-panel" data-idx="${idx}" value="${item.billing_manager_name || ""}"></td>
-        <td><input class="form-control form-control-sm js-override" data-idx="${idx}" type="number" min="0" step="0.01" value="${item.override_daily_revenue ?? ""}"></td>
-        <td class="fw-semibold">${currency(item.computed_daily_revenue || 0)}</td>
-        <td>${item.warning ? '<span class="badge text-bg-warning">' + item.warning + '</span>' : '-'}</td>
-      `;
+      tr.innerHTML =
+        '<td>' + (item.case_code || "") + ' - ' + (item.description || "") + '</td>' +
+        '<td>' + (item.case_type || "-") + '</td>' +
+        '<td>' + (item.region || "-") + '</td>' +
+        '<td>' + Number(item.total_project_hours || 0).toFixed(2) + '</td>' +
+        '<td><input class="form-control form-control-sm js-billable-fte" data-idx="' + idx + '" type="number" min="0.5" step="0.5" value="' + (item.billable_fte ?? "") + '"></td>' +
+        '<td><input class="form-control form-control-sm js-billing-manager-panel" data-idx="' + idx + '" value="' + (item.billing_manager_name || "") + '"></td>' +
+        '<td><input class="form-control form-control-sm js-override" data-idx="' + idx + '" type="number" min="0" step="0.01" value="' + (item.override_daily_revenue ?? "") + '"></td>' +
+        '<td class="fw-semibold">' + currency(item.computed_daily_revenue || 0) + '</td>' +
+        '<td>' + (item.warning ? '<span class="badge text-bg-warning">' + item.warning + '</span>' : '-') + '</td>';
       billingBody.appendChild(tr);
     });
   }
@@ -196,20 +195,19 @@
 
     rows.forEach((row, idx) => {
       const projectDisabled = row.work_category !== "Project";
-      const projectRows = projects.map(p => ({ id: p.id, label: `${p.case_code} - ${p.description}` }));
+      const projectRows = projects.map(p => ({ id: p.id, label: p.case_code + ' - ' + p.description }));
 
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td><select class="form-select form-select-sm js-team-member" data-idx="${idx}">${selectOptions(members, row.team_member_id)}</select></td>
-        <td><select class="form-select form-select-sm js-work-type" data-idx="${idx}">${selectOptions(workCategories, row.work_category)}</select></td>
-        <td><select class="form-select form-select-sm js-project" data-idx="${idx}" ${projectDisabled ? "disabled" : ""}>${selectOptions(projectRows, row.project_id)}</select></td>
-        <td><input class="form-control form-control-sm js-hours" data-idx="${idx}" type="number" min="0.25" max="24" step="0.25" value="${row.hours ?? ""}"></td>
-        <td>${row.team_warning ? '<span class="badge text-bg-warning">Unassigned</span>' : '<span class="badge text-bg-light">' + (row.derived_team_name || '-') + '</span>'}</td>
-        <td><input class="form-control form-control-sm js-billing-manager" data-idx="${idx}" value="${row.billing_manager_name || ""}"></td>
-        <td class="small fw-semibold">${currency(row.revenue_share || 0)}</td>
-        <td class="small fw-semibold">${currency(row.row_cost || 0)}</td>
-        <td><button class="btn btn-sm btn-outline-danger js-del" data-idx="${idx}" type="button">Delete</button></td>
-      `;
+      tr.innerHTML =
+        '<td><select class="form-select form-select-sm js-team-member" data-idx="' + idx + '">' + selectOptions(members, row.team_member_id) + '</select></td>' +
+        '<td><select class="form-select form-select-sm js-work-type" data-idx="' + idx + '">' + selectOptions(workCategories, row.work_category) + '</select></td>' +
+        '<td><select class="form-select form-select-sm js-project" data-idx="' + idx + '"' + (projectDisabled ? ' disabled' : '') + '>' + selectOptions(projectRows, row.project_id) + '</select></td>' +
+        '<td><input class="form-control form-control-sm js-hours" data-idx="' + idx + '" type="number" min="0.25" max="24" step="0.25" value="' + (row.hours ?? "") + '"></td>' +
+        '<td>' + (row.team_warning ? '<span class="badge text-bg-warning">Unassigned</span>' : '<span class="badge text-bg-secondary">' + (row.derived_team_name || '-') + '</span>') + '</td>' +
+        '<td><input class="form-control form-control-sm js-billing-manager" data-idx="' + idx + '" value="' + (row.billing_manager_name || "") + '"></td>' +
+        '<td class="small fw-semibold">' + currency(row.revenue_share || 0) + '</td>' +
+        '<td class="small fw-semibold">' + currency(row.row_cost || 0) + '</td>' +
+        '<td><button class="btn btn-sm btn-outline-danger js-del" data-idx="' + idx + '" type="button"><i class="bi bi-trash3" style="pointer-events:none;"></i></button></td>';
 
       tableBody.appendChild(tr);
       totalHours += Number(row.hours || 0);
@@ -224,12 +222,12 @@
   }
 
   async function loadRows(forcePrefill) {
-    const res = await fetch(`/worklogs/data?date=${dateInput.value}${forcePrefill ? "&force_prefill=1" : ""}`);
+    const res = await fetch("/worklogs/data?date=" + dateInput.value + (forcePrefill ? "&force_prefill=1" : ""));
     const data = await res.json();
     rows = data.worklogs || [];
     billingRows = data.project_day_billing || [];
     if (!rows.length) rows = [defaultRow()];
-    hint.textContent = data.prefilled_from ? `Prefilled from ${data.prefilled_from}` : "";
+    hint.textContent = data.prefilled_from ? "Prefilled from " + data.prefilled_from : "";
     render();
   }
 
@@ -267,8 +265,9 @@
   }
 
   tableBody.addEventListener("click", (event) => {
-    const idx = Number(event.target.dataset.idx);
-    if (event.target.classList.contains("js-del")) {
+    const target = event.target.closest('[data-idx]') || event.target;
+    const idx = Number(target.dataset.idx);
+    if (target.classList.contains("js-del") || target.closest('.js-del')) {
       rows.splice(idx, 1);
       if (!rows.length) rows.push(defaultRow());
       render();
@@ -306,7 +305,7 @@
     if (!event.target.classList.contains("js-hours") || event.key !== "Enter") return;
     event.preventDefault();
     const idx = Number(event.target.dataset.idx);
-    const next = tableBody.querySelector(`.js-hours[data-idx="${idx + 1}"]`);
+    const next = tableBody.querySelector('.js-hours[data-idx="' + (idx + 1) + '"]');
     if (next) next.focus();
   });
 

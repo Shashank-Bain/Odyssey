@@ -10,6 +10,25 @@ from .forms import ProjectForm
 projects_bp = Blueprint("projects", __name__, url_prefix="/projects")
 
 
+DEFAULT_REGIONS = ["AMER", "EMEA", "APAC", "Global"]
+DEFAULT_SKUS = ["SKU-RET-01", "SKU-CD-22", "SKU-INV-07", "SKU-OPS-11"]
+
+
+def _build_select_choices(values: list[str]) -> list[tuple[str, str]]:
+    normalized = sorted({(value or "").strip() for value in values if (value or "").strip()})
+    return [(value, value) for value in normalized]
+
+
+def _set_project_form_choices(form: ProjectForm) -> None:
+    region_values = DEFAULT_REGIONS + [
+        row[0] for row in db.session.query(Project.region).distinct().all() if row[0]
+    ]
+    sku_values = DEFAULT_SKUS + [row[0] for row in db.session.query(Project.sku).distinct().all() if row[0]]
+
+    form.region.choices = _build_select_choices(region_values)
+    form.sku.choices = _build_select_choices(sku_values)
+
+
 @projects_bp.route("/")
 def list_projects():
     status = request.args.get("status", "active")
@@ -47,6 +66,7 @@ def list_projects():
 @projects_bp.route("/new", methods=["GET", "POST"])
 def create_project():
     form = ProjectForm()
+    _set_project_form_choices(form)
     form.team_id.choices = [(0, "Unassigned")] + [
         (team.id, team.name) for team in Team.query.order_by(Team.name.asc()).all()
     ]
@@ -78,16 +98,26 @@ def create_project():
             db.session.rollback()
             form.case_code.errors.append("Case code must be unique.")
 
-    return render_template("projects/form.html", form=form, title="Add Project")
+    elif request.method == "POST":
+        flash("Could not save project. Please fix the highlighted fields and try again.", "danger")
+
+    return render_template("projects/form.html", form=form, title="Add New Project")
 
 
 @projects_bp.route("/<int:project_id>/edit", methods=["GET", "POST"])
 def edit_project(project_id: int):
     project = Project.query.get_or_404(project_id)
     form = ProjectForm(obj=project)
+    _set_project_form_choices(form)
     form.team_id.choices = [(0, "Unassigned")] + [
         (team.id, team.name) for team in Team.query.order_by(Team.name.asc()).all()
     ]
+
+    # Preserve legacy case types for existing records without showing them in the standard clean list.
+    existing_case_type_values = {value for value, _ in form.case_type.choices}
+    if project.case_type and project.case_type not in existing_case_type_values:
+        form.case_type.choices = form.case_type.choices + [(project.case_type, f"{project.case_type} (Legacy)")]
+
     if request.method == "GET":
         form.team_id.data = project.team_id or 0
 
@@ -116,6 +146,9 @@ def edit_project(project_id: int):
         except IntegrityError:
             db.session.rollback()
             form.case_code.errors.append("Case code must be unique.")
+
+    elif request.method == "POST":
+        flash("Could not save project. Please fix the highlighted fields and try again.", "danger")
 
     return render_template("projects/form.html", form=form, title="Edit Project")
 
