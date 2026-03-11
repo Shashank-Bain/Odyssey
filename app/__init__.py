@@ -24,6 +24,20 @@ from .models import (
 )
 
 
+def _resolve_database_uri() -> str:
+    database_url = os.getenv("DATABASE_URL", "").strip()
+    if database_url:
+        # Some providers expose the legacy postgres:// scheme.
+        if database_url.startswith("postgres://"):
+            return database_url.replace("postgres://", "postgresql://", 1)
+        return database_url
+
+    # Vercel serverless filesystem is read-only except /tmp.
+    if os.getenv("VERCEL"):
+        return "sqlite:////tmp/odyssey.db"
+    return "sqlite:///odyssey.db"
+
+
 RESET_MANAGER_PEOPLE = [
     {"name": "Sonal Chawla", "level": "SeniorDirector"},
     {"name": "Shashank Yadav", "level": "SeniorManager1"},
@@ -91,7 +105,7 @@ def create_app() -> Flask:
     app = Flask(__name__)
 
     app.config["SECRET_KEY"] = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
-    app.config["SQLALCHEMY_DATABASE_URI"] = os.getenv("DATABASE_URL", "sqlite:///odyssey.db")
+    app.config["SQLALCHEMY_DATABASE_URI"] = _resolve_database_uri()
     app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
     db.init_app(app)
